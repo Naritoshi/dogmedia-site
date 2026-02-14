@@ -148,7 +148,7 @@ title: "${data.title}"
 date: ${new Date().toISOString()}
 cover:
   image: "/images/${safeName}"
-tags: [${data.tags.map(t => `"${t}"`).join(', ')}]
+tags: [${(data.tags || []).map(t => `"${t}"`).join(', ')}]
 aiGenerated: true
 ---
 
