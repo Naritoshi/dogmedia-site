@@ -158,7 +158,7 @@ function processImage(file, props) {
 title: "${data.title}"
 date: ${new Date().toISOString()}
 cover:
-  image: "/images/${safeName}"
+  image: "images/${safeName}"
 tags: [${(data.tags || []).map(t => `"${t}"`).join(', ')}]
 aiGenerated: true
 ---
