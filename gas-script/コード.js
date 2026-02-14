@@ -4,6 +4,7 @@
  * @return {string} 16進数文字列
  */
 function bytesToHex(bytes) {
+  if (!bytes) return ''; // 安全策: bytesがundefinedの場合は空文字を返す
   return bytes.map(byte => {
     const hex = (byte & 0xFF).toString(16);
     return hex.length === 1 ? '0' + hex : hex;
@@ -89,13 +90,23 @@ function processImage(file, props) {
   const repo = props.getProperty('GITHUB_REPO');
 
   const blob = file.getBlob();
-  const base64Image = Utilities.base64Encode(blob.getBytes());
+  const fileBytes = blob.getBytes(); // バイトデータを一度だけ取得して再利用
+  const base64Image = Utilities.base64Encode(fileBytes);
 
   // 【修正点1】ファイル内容からSHA-256ハッシュを生成し、ファイル名とする
-  const hashBytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, blob.getBytes());
-  const hashHex = bytesToHex(hashBytes);
-  const ext = (file.getName().split('.').pop() || 'jpg').toLowerCase();
-  const safeName = `${hashHex}.${ext}`;
+  let safeName;
+  try {
+    const hashBytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, fileBytes);
+    if (hashBytes) {
+      const hashHex = bytesToHex(hashBytes);
+      const ext = (file.getName().split('.').pop() || 'jpg').toLowerCase();
+      safeName = `${hashHex}.${ext}`;
+    }
+  } catch (e) {
+    Logger.log(`⚠️ ハッシュ生成失敗: ${e.toString()}`);
+  }
+  // ハッシュ生成に失敗した場合（またはundefinedの場合）はタイムスタンプを使用
+  if (!safeName) safeName = `${Date.now()}.${(file.getName().split('.').pop() || 'jpg').toLowerCase()}`;
 
   const mimeType = file.getMimeType();
 
