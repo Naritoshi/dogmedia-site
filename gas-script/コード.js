@@ -173,7 +173,9 @@ ${data.content}
 
   // --- 4. 記事を GitHub (content/posts/) にアップロード ---
   // 【修正点2】Markdownファイル名もハッシュ値ベースにし、重複を防ぐ
-  const postPath = `content/posts/${hashHex}.md`;
+  // safeName から拡張子を除いた部分を取得してIDとする
+  const fileId = safeName.substring(0, safeName.lastIndexOf('.')) || safeName;
+  const postPath = `content/posts/${fileId}.md`;
   const base64Markdown = Utilities.base64Encode(markdownContent, Utilities.Charset.UTF_8);
   
   uploadToGithub(repo, postPath, base64Markdown, `🤖 AI generated: ${data.title}`, githubToken);
