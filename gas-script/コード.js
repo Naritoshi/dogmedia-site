@@ -46,8 +46,15 @@ function main() {
   const folder = DriveApp.getFolderById(folderId);
   const processedFolder = DriveApp.getFolderById(processedFolderId);
   const files = folder.getFiles();
+  const startTime = Date.now(); // 実行開始時刻を記録
   
   while (files.hasNext()) {
+    // 5分（300,000ミリ秒）経過していたら安全に中断 (GASの6分制限対策)
+    if (Date.now() - startTime > 300000) {
+      Logger.log('⏳ タイムアウト防止のため処理を中断します。残りは次回のトリガーで処理されます。');
+      break;
+    }
+
     const file = files.next();
     const mimeType = file.getMimeType();
     
@@ -64,7 +71,6 @@ function main() {
       processedFolder.addFile(file); // 処理済みフォルダに追加
       folder.removeFile(file); // 元のフォルダから削除
       Logger.log(`✅ 完了: ${originalName} を処理済みフォルダに移動しました。`);
-      return; // PoC用: 1回1枚で終了
     } catch (e) {
       Logger.log(`❌ エラー: ${e.toString()}`);
     }
