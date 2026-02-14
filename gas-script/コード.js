@@ -1,30 +1,81 @@
+/**
+ * バイト配列を16進数文字列に変換するヘルパー関数
+ * @param {byte[]} bytes - 変換するバイト配列
+ * @return {string} 16進数文字列
+ */
+function bytesToHex(bytes) {
+  return bytes.map(byte => {
+    const hex = (byte & 0xFF).toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  }).join('');
+}
+
+/**
+ * 利用可能な最新の 'flash' モデル名を取得する
+ * @param {string} apiKey - Gemini APIキー
+ * @return {string} - モデル名 (例: 'gemini-1.5-flash-latest')
+ */
+function getValidFlashModel(apiKey) {
+  const modelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+  try {
+    const response = UrlFetchApp.fetch(modelsUrl, {
+      method: 'get',
+      muteHttpExceptions: true
+    });
+
+    if (response.getResponseCode() === 200) {
+      const models = JSON.parse(response.getContentText()).models;
+      // 'generateContent'をサポートし、名前に'flash'を含むモデルを探す
+      const flashModel = models.find(m => 
+        m.name.includes('flash') && 
+        m.supportedGenerationMethods.includes('generateContent')
+      );
+      if (flashModel) {
+        const modelName = flashModel.name.split('/').pop(); // 'models/'プレフィックスを削除
+        Logger.log(`🤖 動的にモデルを選択しました: ${modelName}`);
+        return modelName;
+      }
+    }
+  } catch (e) {
+    Logger.log(`モデル一覧の取得中にエラーが発生しました: ${e.toString()}`);
+  }
+  // モデルが見つからない場合やエラー発生時のフォールバック
+  const fallbackModel = 'gemini-1.5-flash';
+  Logger.log(`⚠️ 対応モデルが見つかりませんでした。フォールバックします: ${fallbackModel}`);
+  return fallbackModel;
+}
+
 function main() {
   const props = PropertiesService.getScriptProperties();
   const folderId = props.getProperty('FOLDER_ID');
+  const processedFolderId = props.getProperty('PROCESSED_FOLDER_ID');
   
-  if (!folderId) {
-    Logger.log('❌ FOLDER_ID が設定されていません');
+  if (!folderId || !processedFolderId) {
+    Logger.log('❌ FOLDER_ID または PROCESSED_FOLDER_ID が設定されていません');
     return;
   }
 
   const folder = DriveApp.getFolderById(folderId);
+  const processedFolder = DriveApp.getFolderById(processedFolderId);
   const files = folder.getFiles();
   
   while (files.hasNext()) {
     const file = files.next();
     const mimeType = file.getMimeType();
     
-    // JPEG/PNG以外、または処理済み(✅)はスキップ
-    if ((mimeType !== MimeType.JPEG && mimeType !== MimeType.PNG) || file.getName().startsWith('✅')) {
+    // JPEG/PNG以外はスキップ
+    if (mimeType !== MimeType.JPEG && mimeType !== MimeType.PNG) {
       continue;
     }
 
     Logger.log(`🚀 処理開始: ${file.getName()}`);
 
     try {
+      const originalName = file.getName();
       processImage(file, props);
-      file.setName(`✅_${file.getName()}`); // 処理済みにリネーム
-      Logger.log('✅ 完了');
+      processedFolder.addFile(file); // 処理済みフォルダに追加
+      folder.removeFile(file); // 元のフォルダから削除
+      Logger.log(`✅ 完了: ${originalName} を処理済みフォルダに移動しました。`);
       return; // PoC用: 1回1枚で終了
     } catch (e) {
       Logger.log(`❌ エラー: ${e.toString()}`);
@@ -39,19 +90,24 @@ function processImage(file, props) {
 
   const blob = file.getBlob();
   const base64Image = Utilities.base64Encode(blob.getBytes());
+
+  // 【修正点1】ファイル内容からSHA-256ハッシュを生成し、ファイル名とする
+  const hashBytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, blob.getBytes());
+  const hashHex = bytesToHex(hashBytes);
+  const ext = (file.getName().split('.').pop() || 'jpg').toLowerCase();
+  const safeName = `${hashHex}.${ext}`;
+
   const mimeType = file.getMimeType();
-  const fileName = file.getName();
-  // ファイル名を安全な文字のみに変換 (例: photo.jpg)
-  const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '');
 
   // --- 1. 画像を GitHub (static/images/) にアップロード ---
-  // Hugo では static フォルダの中身がルートに公開されます
   const imagePath = `static/images/${safeName}`;
-  uploadToGithub(repo, imagePath, base64Image, `📸 Add image: ${fileName}`, githubToken);
+  uploadToGithub(repo, imagePath, base64Image, `📸 Add image: ${file.getName()} (${safeName})`, githubToken);
   Logger.log(`📤 画像アップロード完了: ${imagePath}`);
 
   // --- 2. Gemini で記事生成 ---
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  // 【修正】利用可能なモデルを動的に取得
+  const modelName = getValidFlashModel(apiKey);
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
   const prompt = `
     この画像をブログ記事用に分析し、以下のJSON形式のみを出力してください。
     Markdownコードブロックは不要です。
@@ -87,12 +143,11 @@ function processImage(file, props) {
   const data = JSON.parse(rawText);
 
   // --- 3. Markdown 生成 (画像リンク付き) ---
-  // static/images/xxx.jpg に置いた画像は、記事からは /images/xxx.jpg で参照できます
   const markdownContent = `---
 title: "${data.title}"
 date: ${new Date().toISOString()}
 cover:
-  image: "images/${safeName}"
+  image: "/images/${safeName}"
 tags: [${data.tags.map(t => `"${t}"`).join(', ')}]
 aiGenerated: true
 ---
@@ -106,7 +161,8 @@ ${data.content}
 `;
 
   // --- 4. 記事を GitHub (content/posts/) にアップロード ---
-  const postPath = `content/posts/${Date.now()}-${safeName.split('.')[0]}.md`;
+  // 【修正点2】Markdownファイル名もハッシュ値ベースにし、重複を防ぐ
+  const postPath = `content/posts/${hashHex}.md`;
   const base64Markdown = Utilities.base64Encode(markdownContent, Utilities.Charset.UTF_8);
   
   uploadToGithub(repo, postPath, base64Markdown, `🤖 AI generated: ${data.title}`, githubToken);
