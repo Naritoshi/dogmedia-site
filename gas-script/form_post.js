@@ -1,4 +1,63 @@
 /**
+ * スプレッドシートが開かれたときにメニューを追加
+ */
+function onOpen() {
+  try {
+    SpreadsheetApp.getUi()
+      .createMenu('Dog Media')
+      .addItem('選択行を投稿', 'postSelectedRow')
+      .addToUi();
+  } catch (e) {
+    // フォーム等のコンテナで実行されている場合は無視
+  }
+}
+
+/**
+ * スプレッドシートの選択行から記事を投稿する
+ */
+function postSelectedRow() {
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const row = sheet.getActiveRange().getRow();
+  
+  if (row < 2) {
+    SpreadsheetApp.getUi().alert('データ行を選択してください。');
+    return;
+  }
+
+  // 列定義: A=Timestamp, B=Email, C=Photo, D=Location, E=Category, F=Memo
+  const data = sheet.getRange(row, 1, 1, 6).getValues()[0];
+  const email = data[1];
+  const photoUrl = data[2];
+  const location = data[3];
+  const category = data[4];
+  const memo = data[5];
+
+  const props = PropertiesService.getScriptProperties();
+  const allowedEmail = props.getProperty('ALLOWED_EMAIL');
+
+  if (allowedEmail && email !== allowedEmail) {
+    SpreadsheetApp.getUi().alert(`⛔ 許可されていないユーザー: ${email}`);
+    return;
+  }
+
+  // Google Drive URLからID抽出 (id=xxx)
+  const idMatch = photoUrl.match(/id=([a-zA-Z0-9_-]+)/);
+  if (!idMatch) {
+    SpreadsheetApp.getUi().alert('❌ 写真URLが無効です');
+    return;
+  }
+  const fileId = idMatch[1];
+
+  try {
+    const file = DriveApp.getFileById(fileId);
+    const title = processFormImage(file, location, category, memo, props);
+    SpreadsheetApp.getUi().alert(`✅ 投稿完了: ${title}`);
+  } catch (e) {
+    SpreadsheetApp.getUi().alert(`❌ エラー: ${e.toString()}`);
+  }
+}
+
+/**
  * フォームの回答をトリガーに実行されるメイン関数
  * @param {Object} e - イベントオブジェクト
  */
@@ -141,4 +200,5 @@ ${articleData.content}
   uploadToGitHub(repo, postPath, markdownBase64, `Add post: ${articleData.title}`, githubToken);
   
   Logger.log(`✅ 投稿完了: ${articleData.title}`);
+  return articleData.title;
 }
