@@ -59,4 +59,18 @@
 &lt;h2 id="アクセス解析ツールについて">アクセス解析ツールについて&lt;/h2>
 &lt;p>当サイトでは、Googleによるアクセス解析ツール「Googleアナリティクス」を利用する可能性があります。
 このGoogleアナリティクスはトラフィックデータの収集のためにCookieを使用します。
-このトラフィックデータは匿名で収集されており、個人を特定するものではありません。&lt;/p></description></item></channel></rss>
+このトラフィックデータは匿名で収集されており、個人を特定するものではありません。&lt;/p></description></item><item><title>運営者情報</title><link>https://dog-media.com/about/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://dog-media.com/about/</guid><description>&lt;h2 id="このサイトについて">このサイトについて&lt;/h2>
+&lt;p>「犬メディア」は、愛犬との日常を記録したフォトログメディアです。
+日々の散歩や旅行先で撮影した写真を AI (人工知能) に分析させ、その時の状況や思い出を記事として記録するという実験的な試みを行っています。&lt;/p>
+&lt;h2 id="コンテンツの生成ポリシー">コンテンツの生成ポリシー&lt;/h2>
+&lt;p>当サイトの記事は以下のプロセスで作成されています。&lt;/p>
+&lt;ol>
+&lt;li>&lt;strong>写真:&lt;/strong> 全て運営者が撮影した&lt;strong>オリジナルの写真&lt;/strong>を使用しています。&lt;/li>
+&lt;li>&lt;strong>文章:&lt;/strong> 写真と撮影時のメモをもとに、生成AIが執筆しています。&lt;/li>
+&lt;/ol>
+&lt;p>AIによる生成のため、一部の表現に不自然な点や推測が含まれる場合がありますが、写真そのものは正真正銘の記録です。&lt;/p>
+&lt;h2 id="運営者">運営者&lt;/h2>
+&lt;p>&lt;strong>Matsuo&lt;/strong>
+愛犬と暮らすエンジニア。日々の記録を技術の力で残すためにこのサイトを立ち上げました。&lt;/p>
+&lt;h2 id="お問い合わせ">お問い合わせ&lt;/h2>
+&lt;p>当サイトに関するお問い合わせは、&lt;a href="https://dog-media.com/contact/">お問い合わせフォーム&lt;/a>よりお願いいたします。&lt;/p></description></item></channel></rss>
