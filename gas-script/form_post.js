@@ -1,28 +1,16 @@
 /**
- * スプレッドシートが開かれたときにメニューを追加
+ * スプレッドシートの編集イベントハンドラ
+ * ※この関数を「インストール可能なトリガー（編集時）」として設定してください
  */
-function onOpen() {
-  try {
-    SpreadsheetApp.getUi()
-      .createMenu('Dog Media')
-      .addItem('選択行を投稿', 'postSelectedRow')
-      .addToUi();
-  } catch (e) {
-    // フォーム等のコンテナで実行されている場合は無視
-  }
-}
-
-/**
- * スプレッドシートの選択行から記事を投稿する
- */
-function postSelectedRow() {
-  const sheet = SpreadsheetApp.getActiveSheet();
-  const row = sheet.getActiveRange().getRow();
+function onSpreadsheetEdit(e) {
+  const range = e.range;
+  const sheet = range.getSheet();
   
-  if (row < 2) {
-    SpreadsheetApp.getUi().alert('データ行を選択してください。');
-    return;
-  }
+  // G列 (7列目) のチェックボックスが ON になった場合のみ実行
+  // ※事前にG列にチェックボックスを挿入しておいてください
+  if (range.getColumn() === 7 && (e.value === '投稿する' || e.value === true)) {
+    const row = range.getRow();
+    if (row < 2) return; // ヘッダー行は無視
 
   // 列定義: A=Timestamp, B=Email, C=Photo, D=Location, E=Category, F=Memo
   const data = sheet.getRange(row, 1, 1, 6).getValues()[0];
@@ -31,14 +19,28 @@ function postSelectedRow() {
   const location = data[3];
   const category = data[4];
   const memo = data[5];
+    // 処理中ステータス表示
+    range.setValue('⏳ 処理中...');
+    SpreadsheetApp.flush();
 
   const props = PropertiesService.getScriptProperties();
   const allowedEmail = props.getProperty('ALLOWED_EMAIL');
+    try {
+      // データの取得 (A列〜F列)
+      // A:Timestamp, B:Email, C:Photo, D:Location, E:Category, F:Memo
+      const data = sheet.getRange(row, 1, 1, 6).getValues()[0];
+      const email = data[1];
+      const photoUrl = data[2];
+      const location = data[3];
+      const category = data[4];
+      const memo = data[5];
 
   if (allowedEmail && email !== allowedEmail) {
     SpreadsheetApp.getUi().alert(`⛔ 許可されていないユーザー: ${email}`);
     return;
   }
+      const props = PropertiesService.getScriptProperties();
+      const allowedEmail = props.getProperty('ALLOWED_EMAIL');
 
   // Google Drive URLからID抽出 (id=xxx)
   const idMatch = photoUrl.match(/id=([a-zA-Z0-9_-]+)/);
@@ -47,6 +49,9 @@ function postSelectedRow() {
     return;
   }
   const fileId = idMatch[1];
+      if (allowedEmail && email !== allowedEmail) {
+        throw new Error(`⛔ 許可されていないユーザー: ${email}`);
+      }
 
   try {
     const file = DriveApp.getFileById(fileId);
@@ -54,6 +59,25 @@ function postSelectedRow() {
     SpreadsheetApp.getUi().alert(`✅ 投稿完了: ${title}`);
   } catch (e) {
     SpreadsheetApp.getUi().alert(`❌ エラー: ${e.toString()}`);
+      // Google Drive URLからID抽出
+      const idMatch = photoUrl.match(/id=([a-zA-Z0-9_-]+)/);
+      if (!idMatch) {
+        throw new Error('❌ 写真URLが無効です');
+      }
+      const fileId = idMatch[1];
+      const file = DriveApp.getFileById(fileId);
+
+      // 投稿処理実行
+      const title = processFormImage(file, location, category, memo, props);
+      
+      // 完了ステータス
+      range.setValue(`✅ ${title}`);
+      
+    } catch (err) {
+      // エラー表示
+      range.setValue(`❌ ${err.toString()}`);
+      console.error(err);
+    }
   }
 }
 
