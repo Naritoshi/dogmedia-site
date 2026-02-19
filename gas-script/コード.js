@@ -1,38 +1,3 @@
-/**
- * 利用可能な最新の 'flash' モデル名を取得する
- * @param {string} apiKey - Gemini APIキー
- * @return {string} - モデル名 (例: 'gemini-1.5-flash-latest')
- */
-function getValidFlashModel(apiKey) {
-  const modelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
-  try {
-    const response = UrlFetchApp.fetch(modelsUrl, {
-      method: 'get',
-      muteHttpExceptions: true
-    });
-
-    if (response.getResponseCode() === 200) {
-      const models = JSON.parse(response.getContentText()).models;
-      // 'generateContent'をサポートし、名前に'flash'を含むモデルを探す
-      const flashModel = models.find(m => 
-        m.name.includes('flash') && 
-        m.supportedGenerationMethods.includes('generateContent')
-      );
-      if (flashModel) {
-        const modelName = flashModel.name.split('/').pop(); // 'models/'プレフィックスを削除
-        Logger.log(`🤖 動的にモデルを選択しました: ${modelName}`);
-        return modelName;
-      }
-    }
-  } catch (e) {
-    Logger.log(`モデル一覧の取得中にエラーが発生しました: ${e.toString()}`);
-  }
-  // モデルが見つからない場合やエラー発生時のフォールバック
-  const fallbackModel = 'gemini-1.5-flash';
-  Logger.log(`⚠️ 対応モデルが見つかりませんでした。フォールバックします: ${fallbackModel}`);
-  return fallbackModel;
-}
-
 function main() {
   const props = PropertiesService.getScriptProperties();
   const folderId = props.getProperty('FOLDER_ID');
@@ -174,7 +139,8 @@ function processImage(file, props) {
 
   // --- 3. 画像を GitHub (static/images/) にアップロード ---
   const imagePath = `static/images/${safeName}`;
-  uploadToGithub(repo, imagePath, base64Image, `📸 Add image: ${safeName}`, githubToken);
+  // utils.js の uploadToGitHub (Hが大文字) を使用
+  uploadToGitHub(repo, imagePath, base64Image, `📸 Add image: ${safeName}`, githubToken);
   Logger.log(`📤 画像アップロード完了: ${imagePath}`);
 
   // マップ表示セクションの作成
@@ -211,47 +177,7 @@ ${locationSection}
   const postPath = `content/posts/${fileId}.md`;
   const base64Markdown = Utilities.base64Encode(markdownContent, Utilities.Charset.UTF_8);
   
-  uploadToGithub(repo, postPath, base64Markdown, `🤖 AI generated: ${data.title}`, githubToken);
+  // utils.js の uploadToGitHub (Hが大文字) を使用
+  uploadToGitHub(repo, postPath, base64Markdown, `🤖 AI generated: ${data.title}`, githubToken);
   Logger.log(`📤 記事アップロード完了: ${postPath}`);
-}
-
-// GitHub API アップロード用共通関数
-function uploadToGithub(repo, path, contentBase64, message, token) {
-  const url = `https://api.github.com/repos/${repo}/contents/${path}`;
-  
-  // 同名ファイルがあるかチェック（上書き用）
-  let sha = null;
-  try {
-    const check = UrlFetchApp.fetch(url, {
-      method: 'get',
-      headers: { 'Authorization': `Bearer ${token}` },
-      muteHttpExceptions: true
-    });
-    if (check.getResponseCode() === 200) {
-      sha = JSON.parse(check.getContentText()).sha;
-    }
-  } catch (e) {}
-
-  const payload = {
-    message: message,
-    content: contentBase64
-  };
-  if (sha) {
-    payload.sha = sha;
-  }
-
-  const response = UrlFetchApp.fetch(url, {
-    method: 'put',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/vnd.github.v3+json'
-    },
-    contentType: 'application/json',
-    payload: JSON.stringify(payload),
-    muteHttpExceptions: true
-  });
-
-  if (response.getResponseCode() !== 201 && response.getResponseCode() !== 200) {
-    throw new Error(`GitHub API Error: ${response.getContentText()}`);
-  }
 }
