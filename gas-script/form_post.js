@@ -3,28 +3,23 @@
  * ※この関数を「インストール可能なトリガー（編集時）」として設定してください
  */
 function onSpreadsheetEdit(e) {
+  // トリガー実行でない場合のガード
+  if (!e || !e.range) return;
+
+  const props = PropertiesService.getScriptProperties();
+
   const range = e.range;
   const sheet = range.getSheet();
   
   // G列 (7列目) のチェックボックスが ON になった場合のみ実行
-  // ※事前にG列にチェックボックスを挿入しておいてください
-  if (range.getColumn() === 7 && (e.value === '投稿する' || e.value === true)) {
+  if (range.getColumn() === 7 && (e.value === 'TRUE' || e.value === true || e.value === '投稿する')) {
     const row = range.getRow();
     if (row < 2) return; // ヘッダー行は無視
 
-  // 列定義: A=Timestamp, B=Email, C=Photo, D=Location, E=Category, F=Memo
-  const data = sheet.getRange(row, 1, 1, 6).getValues()[0];
-  const email = data[1];
-  const photoUrl = data[2];
-  const location = data[3];
-  const category = data[4];
-  const memo = data[5];
     // 処理中ステータス表示
     range.setValue('⏳ 処理中...');
     SpreadsheetApp.flush();
 
-  const props = PropertiesService.getScriptProperties();
-  const allowedEmail = props.getProperty('ALLOWED_EMAIL');
     try {
       // データの取得 (A列〜F列)
       // A:Timestamp, B:Email, C:Photo, D:Location, E:Category, F:Memo
@@ -35,36 +30,25 @@ function onSpreadsheetEdit(e) {
       const category = data[4];
       const memo = data[5];
 
-  if (allowedEmail && email !== allowedEmail) {
-    SpreadsheetApp.getUi().alert(`⛔ 許可されていないユーザー: ${email}`);
-    return;
-  }
-      const props = PropertiesService.getScriptProperties();
       const allowedEmail = props.getProperty('ALLOWED_EMAIL');
 
-  // Google Drive URLからID抽出 (id=xxx)
-  const idMatch = photoUrl.match(/id=([a-zA-Z0-9_-]+)/);
-  if (!idMatch) {
-    SpreadsheetApp.getUi().alert('❌ 写真URLが無効です');
-    return;
-  }
-  const fileId = idMatch[1];
       if (allowedEmail && email !== allowedEmail) {
         throw new Error(`⛔ 許可されていないユーザー: ${email}`);
       }
 
-  try {
-    const file = DriveApp.getFileById(fileId);
-    const title = processFormImage(file, location, category, memo, props);
-    SpreadsheetApp.getUi().alert(`✅ 投稿完了: ${title}`);
-  } catch (e) {
-    SpreadsheetApp.getUi().alert(`❌ エラー: ${e.toString()}`);
       // Google Drive URLからID抽出
+      let fileId = "";
       const idMatch = photoUrl.match(/id=([a-zA-Z0-9_-]+)/);
-      if (!idMatch) {
+      const dMatch = photoUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      
+      if (idMatch) {
+        fileId = idMatch[1];
+      } else if (dMatch) {
+        fileId = dMatch[1];
+      } else {
         throw new Error('❌ 写真URLが無効です');
       }
-      const fileId = idMatch[1];
+
       const file = DriveApp.getFileById(fileId);
 
       // 投稿処理実行
@@ -108,6 +92,7 @@ function onFormSubmit(e) {
   // 2. 回答データの抽出
   const itemResponses = e.response.getItemResponses();
   let fileId, location, category, memo;
+  let shouldPost = true; // デフォルトは投稿する
 
   itemResponses.forEach(itemResponse => {
     const title = itemResponse.getItem().getTitle();
@@ -117,10 +102,24 @@ function onFormSubmit(e) {
     if (title === '撮影場所') location = response;
     if (title === 'カテゴリー') category = response;
     if (title === '状況・メモ') memo = response;
+    
+    // 「投稿」チェックボックスの確認
+    if (title === '投稿' || title === '投稿する') {
+      // 配列または文字列で「はい」が含まれているか確認
+      const val = Array.isArray(response) ? response.join('') : response;
+      if (!val.includes('はい')) {
+        shouldPost = false;
+      }
+    }
   });
 
   if (!fileId) {
     Logger.log('❌ 写真が見つかりません');
+    return;
+  }
+
+  if (!shouldPost) {
+    Logger.log('⏭️ 「投稿」チェックがないため、GitHubへのアップロードをスキップしました。');
     return;
   }
 
