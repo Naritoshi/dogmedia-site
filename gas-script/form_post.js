@@ -234,7 +234,7 @@ function setupSpreadsheetTrigger() {
   // ↓ここにトリガーを設定したいスプレッドシートのIDを入力してください
   const sheetId = '1e4zuZXf2jk9zv6SG5DVGAf4JltVVlpi-zTzsWsgejbg';
   
-  if (sheetId === '1e4zuZXf2jk9zv6SG5DVGAf4JltVVlpi-zTzsWsgejbg') {
+  if (sheetId === 'ここにスプレッドシートIDを貼り付けてください') {
     throw new Error('❌ スプレッドシートIDを入力してから実行してください');
   }
 
