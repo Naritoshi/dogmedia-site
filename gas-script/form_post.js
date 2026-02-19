@@ -232,9 +232,9 @@ ${articleData.content}
  */
 function setupSpreadsheetTrigger() {
   // ↓ここにトリガーを設定したいスプレッドシートのIDを入力してください
-  const sheetId = 'ここにスプレッドシートIDを貼り付けてください';
+  const sheetId = '1e4zuZXf2jk9zv6SG5DVGAf4JltVVlpi-zTzsWsgejbg';
   
-  if (sheetId === 'ここにスプレッドシートIDを貼り付けてください') {
+  if (sheetId === '1e4zuZXf2jk9zv6SG5DVGAf4JltVVlpi-zTzsWsgejbg') {
     throw new Error('❌ スプレッドシートIDを入力してから実行してください');
   }
 
