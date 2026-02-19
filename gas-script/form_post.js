@@ -225,3 +225,26 @@ ${articleData.content}
   Logger.log(`✅ 投稿完了: ${articleData.title}`);
   return articleData.title;
 }
+
+/**
+ * スプレッドシートのトリガーを手動設定する関数
+ * GUIで「スプレッドシートから」が選べない場合に、この関数を一度だけ実行してください。
+ */
+function setupSpreadsheetTrigger() {
+  // ↓ここにトリガーを設定したいスプレッドシートのIDを入力してください
+  const sheetId = 'ここにスプレッドシートIDを貼り付けてください';
+  
+  if (sheetId === 'ここにスプレッドシートIDを貼り付けてください') {
+    throw new Error('❌ スプレッドシートIDを入力してから実行してください');
+  }
+
+  // 既存の同名トリガーがあれば削除（重複防止）
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(t => {
+    if (t.getHandlerFunction() === 'onSpreadsheetEdit') ScriptApp.deleteTrigger(t);
+  });
+
+  // 新しいトリガーを作成
+  ScriptApp.newTrigger('onSpreadsheetEdit').forSpreadsheet(sheetId).onEdit().create();
+  Logger.log(`✅ トリガーを設定しました: ${sheetId}`);
+}
