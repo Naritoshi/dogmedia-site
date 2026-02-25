@@ -225,6 +225,13 @@ function processFormImage(file, location, category, memo, props) {
   const imagePath = `static/images/${baseName}.${fileExt}`;
   const postPath = `content/posts/${baseName}.md`;
 
+  // Google Mapsリンクの生成
+  let locationLink = "";
+  if (location && location !== '不明') {
+    const encodedLocation = encodeURIComponent(location);
+    locationLink = `\n\n📍 **撮影場所**: ${location}`;
+  }
+
   // 1. 画像をGitHubへアップロード (utils.jsの関数を利用)
   uploadToGitHub(repo, imagePath, base64Image, `Add image: ${baseName}`, githubToken);
 
@@ -240,6 +247,7 @@ cover:
 ---
 
 ${articleData.content}
+${locationLink}
 `;
 
   const markdownBase64 = Utilities.base64Encode(markdownContent, Utilities.Charset.UTF_8);
