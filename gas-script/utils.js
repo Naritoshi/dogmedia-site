@@ -34,6 +34,48 @@ function getValidFlashModel(apiKey) {
 }
 
 /**
+ * 生成可能なモデルのリストを優先度順に取得する
+ * @param {string} apiKey - Gemini APIキー
+ * @return {string[]} - モデル名の配列 (例: ['gemini-1.5-flash', 'gemini-1.5-pro', ...])
+ */
+function getPrioritizedModels(apiKey) {
+  const modelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+  // API取得失敗時のフォールバックリスト
+  const defaultModels = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.0-pro'];
+  
+  try {
+    const response = UrlFetchApp.fetch(modelsUrl, {
+      method: 'get',
+      muteHttpExceptions: true
+    });
+
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      if (!data.models) return defaultModels;
+
+      const models = data.models
+        .filter(m => m.supportedGenerationMethods.includes('generateContent'))
+        .map(m => m.name.replace('models/', ''));
+
+      // 優先順位: flash > pro > その他 (かつ latest を優先)
+      return models.sort((a, b) => {
+        const getScore = (name) => {
+          let score = 0;
+          if (name.includes('flash')) score += 10;
+          if (name.includes('pro')) score += 5;
+          if (name.includes('latest')) score += 2;
+          return score;
+        };
+        return getScore(b) - getScore(a);
+      });
+    }
+  } catch (e) {
+    Logger.log(`モデル一覧取得エラー: ${e.toString()}`);
+  }
+  return defaultModels;
+}
+
+/**
  * GitHub APIを使ってファイルを作成/更新する（共通関数）
  * @param {string} repo - リポジトリ名 (user/repo)
  * @param {string} path - ファイルパス

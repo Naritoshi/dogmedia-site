@@ -100,7 +100,7 @@ function onFormSubmit(e) {
 
     if (title === '写真') fileId = response[0]; // ファイルアップロードは配列で返る
     if (title === '撮影場所') location = response;
-    if (title === 'カテゴリー') category = response;
+    if (title === 'カテゴリ') category = response;
     if (title === '状況・メモ') memo = response;
     
     // 「投稿」チェックボックスの確認
@@ -145,9 +145,8 @@ function processFormImage(file, location, category, memo, props) {
   const mimeType = file.getMimeType();
   const fileExt = file.getName().split('.').pop();
 
-  // Gemini モデルの動的選択 (utils.jsの関数を利用)
-  const modelName = getValidFlashModel(apiKey);
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+  // Gemini モデルのリストを取得 (utils.jsの関数を利用)
+  const models = getPrioritizedModels(apiKey);
 
   // プロンプトの構築
   const prompt = `
@@ -179,17 +178,41 @@ function processFormImage(file, location, category, memo, props) {
     }
   };
 
-  const response = UrlFetchApp.fetch(apiUrl, {
-    method: 'post',
-    contentType: 'application/json',
-    payload: JSON.stringify(payload),
-    muteHttpExceptions: true
-  });
+  // リトライロジック (モデルを変更しながら試行)
+  let response;
+  let lastError;
 
-  if (response.getResponseCode() !== 200) {
-    throw new Error(`Gemini API Error: ${response.getContentText()}`);
+  for (const modelName of models) {
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    console.log(`🤖 Trying model: ${modelName}`);
+
+    try {
+      response = UrlFetchApp.fetch(apiUrl, {
+        method: 'post',
+        contentType: 'application/json',
+        payload: JSON.stringify(payload),
+        muteHttpExceptions: true
+      });
+
+      if (response.getResponseCode() === 200) break; // 成功したらループを抜ける
+
+      // エラー時はログを出して次へ
+      console.warn(`⚠️ Model ${modelName} failed (${response.getResponseCode()}). Trying next...`);
+      lastError = response.getContentText();
+      
+      // 連続リクエストを防ぐため少し待機
+      Utilities.sleep(1000);
+
+    } catch (e) {
+      console.warn(`⚠️ Model ${modelName} exception: ${e.toString()}`);
+      lastError = e.toString();
+    }
   }
 
+  if (!response || response.getResponseCode() !== 200) {
+    throw new Error(`All models failed. Last error: ${lastError}`);
+  }
+  
   const result = JSON.parse(response.getContentText());
   const jsonText = result.candidates[0].content.parts[0].text;
   const articleData = JSON.parse(jsonText);
@@ -242,9 +265,11 @@ function setupSpreadsheetTrigger() {
   const triggers = ScriptApp.getProjectTriggers();
   triggers.forEach(t => {
     if (t.getHandlerFunction() === 'onSpreadsheetEdit') ScriptApp.deleteTrigger(t);
+    if (t.getHandlerFunction() === 'onFormSubmit') ScriptApp.deleteTrigger(t);
   });
 
   // 新しいトリガーを作成
   ScriptApp.newTrigger('onSpreadsheetEdit').forSpreadsheet(sheetId).onEdit().create();
+  ScriptApp.newTrigger('onFormSubmit').forSpreadsheet(sheetId).onFormSubmit().create();
   Logger.log(`✅ トリガーを設定しました: ${sheetId}`);
 }
