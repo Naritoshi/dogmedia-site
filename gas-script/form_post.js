@@ -70,30 +70,17 @@ function onSpreadsheetEdit(e) {
  * @param {Object} e - イベントオブジェクト
  */
 function onFormSubmit(e) {
-  // --- ここからデバッグコード ---
-  // イベントオブジェクトの内容をログに出力して、どのようなトリガーで実行されたかを確認します。
-  try {
-    Logger.log('【デバッグ情報】イベントオブジェクトの内容:');
-    Logger.log(JSON.stringify(e, null, 2));
-  } catch (err) {
-    Logger.log('【デバッグ情報】イベントオブジェクトの確認中にエラー: ' + err.toString());
-    // eがnullやundefinedの場合も考慮
-    Logger.log('e object: ' + e);
-  }
-  // --- ここまでデバッグコード ---
-
   const props = PropertiesService.getScriptProperties();
-  
-  // 1. セキュリティチェック (自分自身の投稿か確認)
+
+  // 1. セキュリティチェック (e.namedValuesからメールアドレス取得)
   const allowedEmail = props.getProperty('ALLOWED_EMAIL');
-  
-  // エディタからの直接実行などで e.response がない場合のガード
-  if (!e || !e.response) {
-    Logger.log('⚠️ この関数はフォーム送信トリガーから実行してください');
+  const respondentEmail = e.namedValues['メールアドレス'] ? e.namedValues['メールアドレス'][0] : null;
+
+  if (!respondentEmail) {
+    Logger.log('⛔ メールアドレスが取得できませんでした。フォームとスプレッドシートの列名「メールアドレス」を確認してください。');
     return;
   }
 
-  const respondentEmail = e.response.getRespondentEmail();
   if (allowedEmail && respondentEmail !== allowedEmail) {
     Logger.log(`⛔ 許可されていないユーザーからの投稿をブロックしました: ${respondentEmail}`);
     return;
@@ -101,46 +88,55 @@ function onFormSubmit(e) {
 
   Logger.log(`🚀 フォーム投稿を受信: ${respondentEmail}`);
 
-  // 2. 回答データの抽出
-  const itemResponses = e.response.getItemResponses();
-  let fileId, location, category, memo;
-  let shouldPost = true; // デフォルトは投稿する
+  // 2. 回答データの抽出 (e.namedValuesから)
+  const photoUrl = e.namedValues['写真'] ? e.namedValues['写真'][0] : null;
+  const location = e.namedValues['撮影場所'] ? e.namedValues['撮影場所'][0] : null;
+  const category = e.namedValues['カテゴリ'] ? e.namedValues['カテゴリ'][0] : null;
+  const memo = e.namedValues['状況・メモ'] ? e.namedValues['状況・メモ'][0] : null;
+  const shouldPostRaw = e.namedValues['投稿'] ? e.namedValues['投稿'][0] : '';
 
-  itemResponses.forEach(itemResponse => {
-    const title = itemResponse.getItem().getTitle();
-    const response = itemResponse.getResponse();
-
-    if (title === '写真') fileId = response[0]; // ファイルアップロードは配列で返る
-    if (title === '撮影場所') location = response;
-    if (title === 'カテゴリ') category = response;
-    if (title === '状況・メモ') memo = response;
-    
-    // 「投稿」チェックボックスの確認
-    if (title === '投稿' || title === '投稿する') {
-      // 配列または文字列で「はい」が含まれているか確認
-      const val = Array.isArray(response) ? response.join('') : response;
-      if (!val.includes('はい')) {
-        shouldPost = false;
-      }
-    }
-  });
-
-  if (!fileId) {
-    Logger.log('❌ 写真が見つかりません');
+  if (!photoUrl) {
+    Logger.log('❌ 写真のURLが見つかりません');
     return;
   }
 
-  if (!shouldPost) {
-    Logger.log('⏭️ 「投稿」チェックがないため、GitHubへのアップロードをスキップしました。');
+  // "投稿する" という値でチェック
+  if (shouldPostRaw !== '投稿する') {
+    Logger.log(`⏭️ 「投稿する」チェックがないため、処理をスキップしました。(値: ${shouldPostRaw})`);
     return;
   }
 
   // 3. 画像ファイルの取得と処理実行
   try {
+    // Google Drive URLからID抽出 (onSpreadsheetEditのロジックを統合)
+    let fileId = "";
+    const idMatch = photoUrl.match(/id=([a-zA-Z0-9_-]+)/);
+    const dMatch = photoUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    
+    if (idMatch) {
+      fileId = idMatch[1];
+    } else if (dMatch) {
+      fileId = dMatch[1];
+    } else {
+      throw new Error('❌ 写真URLが無効です: ' + photoUrl);
+    }
+    
     const file = DriveApp.getFileById(fileId);
-    processFormImage(file, location, category, memo, props);
+    const title = processFormImage(file, location, category, memo, props);
+
+    // 成功ステータスをシートに書き込む (G列を想定)
+    const sheet = e.source.getActiveSheet();
+    sheet.getRange(e.range.rowStart, 7).setValue(`✅ ${title}`);
+
   } catch (err) {
     Logger.log(`❌ エラーが発生しました: ${err.toString()}`);
+    // エラーステータスをシートに書き込む (G列を想定)
+    try {
+      const sheet = e.source.getActiveSheet();
+      sheet.getRange(e.range.rowStart, 7).setValue(`❌ ${err.toString()}`);
+    } catch (sheetErr) {
+      Logger.log(`シートへのエラー書き込みにも失敗しました: ${sheetErr.toString()}`);
+    }
   }
 }
 
