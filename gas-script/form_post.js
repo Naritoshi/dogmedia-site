@@ -145,34 +145,40 @@ function processFormImage(file, location, category, memo, props) {
   const mimeType = file.getMimeType();
   const fileExt = file.getName().split('.').pop();
 
-  // --- 0. 位置情報処理 (ハイブリッド戦略) ---
-  let sourceLocationInfo, sourceMapLink, sourceLat, sourceLng;
-  
-  // Step 1: 画像のEXIFデータから位置情報を試す
-  const exifData = getLocationData(file);
+  // --- 0. 位置情報処理 (カテゴリによる制限付き) ---
+  let sourceLocationInfo = '不明';
+  let sourceMapLink = null;
+  let sourceLat = null;
+  let sourceLng = null;
 
-  if (exifData && exifData.lat && exifData.lng) {
-    // 有効なEXIFデータを使用
-    sourceLocationInfo = exifData.locationInfo || `緯度: ${exifData.lat}, 経度: ${exifData.lng}`;
-    sourceMapLink = exifData.mapLink;
-    sourceLat = exifData.lat;
-    sourceLng = exifData.lng;
-    Logger.log(`📍 EXIFから位置情報を取得しました: ${sourceLocationInfo}`);
-  } else if (location && location.trim() !== '' && location.trim() !== '不明') {
-    // Step 2: EXIFがなければフォームの入力情報をフォールバックとして使用
-    sourceLocationInfo = location.trim();
-    sourceMapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(sourceLocationInfo)}`;
-    sourceLat = null; // テキスト情報からは緯度経度は不明
-    sourceLng = null;
-    Logger.log(`ℹ️ EXIF位置情報がなかったため、フォーム入力の場所情報を使用します: ${sourceLocationInfo}`);
+  // 特定のカテゴリの場合のみ位置情報を取得する
+  const locationEnabledCategories = ['公園', '旅行', 'ドックラン', 'お店'];
+  if (category && locationEnabledCategories.includes(category)) {
+      
+      // Step 1: 画像のEXIFデータから位置情報を試す
+      const exifData = getLocationData(file);
+
+      if (exifData && exifData.lat && exifData.lng) {
+        // 有効なEXIFデータを使用
+        sourceLocationInfo = exifData.locationInfo || `緯度: ${exifData.lat}, 経度: ${exifData.lng}`;
+        sourceMapLink = exifData.mapLink;
+        sourceLat = exifData.lat;
+        sourceLng = exifData.lng;
+        Logger.log(`📍 [${category}] カテゴリのためEXIFから位置情報を取得しました: ${sourceLocationInfo}`);
+      } else if (location && location.trim() !== '' && location.trim() !== '不明') {
+        // Step 2: EXIFがなければフォームの入力情報をフォールバックとして使用
+        sourceLocationInfo = location.trim();
+        sourceMapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(sourceLocationInfo)}`;
+        // lat/lngはnullのまま
+        Logger.log(`ℹ️ [${category}] カテゴリのためフォーム入力の場所情報を使用します: ${sourceLocationInfo}`);
+      } else {
+        Logger.log(`🤷‍♀️ [${category}] カテゴリですが、利用できる位置情報がありませんでした。`);
+      }
+
   } else {
-    // Step 3: 利用可能な位置情報がない場合
-    sourceLocationInfo = '不明';
-    sourceMapLink = null;
-    sourceLat = null;
-    sourceLng = null;
-    Logger.log('🤷‍♀️ 利用できる位置情報がありませんでした。');
+    Logger.log(`🏠 自宅などプライベートな場所の可能性があるため、位置情報の取得をスキップしました。(カテゴリ: ${category || '未設定'})`);
   }
+
 
   // --- 1. Gemini での記事生成 ---
   const models = getPrioritizedModels(apiKey);
