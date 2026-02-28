@@ -138,14 +138,43 @@ function onFormSubmit(e) {
 function processFormImage(file, location, category, memo, props) {
   const apiKey = props.getProperty('GEMINI_API_KEY');
   const githubToken = props.getProperty('GITHUB_TOKEN');
-  const repo = props.getProperty('GITHUB_REPO'); // 例: "username/repo"
+  const repo = props.getProperty('GITHUB_REPO');
 
   const blob = file.getBlob();
   const base64Image = Utilities.base64Encode(blob.getBytes());
   const mimeType = file.getMimeType();
   const fileExt = file.getName().split('.').pop();
 
-  // Gemini モデルのリストを取得 (utils.jsの関数を利用)
+  // --- 0. 位置情報処理 (ハイブリッド戦略) ---
+  let sourceLocationInfo, sourceMapLink, sourceLat, sourceLng;
+  
+  // Step 1: 画像のEXIFデータから位置情報を試す
+  const exifData = getLocationData(file);
+
+  if (exifData && exifData.lat && exifData.lng) {
+    // 有効なEXIFデータを使用
+    sourceLocationInfo = exifData.locationInfo || `緯度: ${exifData.lat}, 経度: ${exifData.lng}`;
+    sourceMapLink = exifData.mapLink;
+    sourceLat = exifData.lat;
+    sourceLng = exifData.lng;
+    Logger.log(`📍 EXIFから位置情報を取得しました: ${sourceLocationInfo}`);
+  } else if (location && location.trim() !== '' && location.trim() !== '不明') {
+    // Step 2: EXIFがなければフォームの入力情報をフォールバックとして使用
+    sourceLocationInfo = location.trim();
+    sourceMapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(sourceLocationInfo)}`;
+    sourceLat = null; // テキスト情報からは緯度経度は不明
+    sourceLng = null;
+    Logger.log(`ℹ️ EXIF位置情報がなかったため、フォーム入力の場所情報を使用します: ${sourceLocationInfo}`);
+  } else {
+    // Step 3: 利用可能な位置情報がない場合
+    sourceLocationInfo = '不明';
+    sourceMapLink = null;
+    sourceLat = null;
+    sourceLng = null;
+    Logger.log('🤷‍♀️ 利用できる位置情報がありませんでした。');
+  }
+
+  // --- 1. Gemini での記事生成 ---
   const models = getPrioritizedModels(apiKey);
 
   // プロンプトの構築
@@ -153,7 +182,7 @@ function processFormImage(file, location, category, memo, props) {
     あなたはプロのブロガーです。以下の情報を元に、ブログ記事のJSONデータを作成してください。
     
     【入力情報】
-    - 撮影場所: ${location || '不明'}
+    - 撮影場所: ${sourceLocationInfo}
     - カテゴリー: ${category || '日常'}
     - メモ: ${memo || '特になし'}
     
@@ -163,7 +192,6 @@ function processFormImage(file, location, category, memo, props) {
     - "title": 魅力的なタイトル(30文字以内)
     - "content": 記事本文(Markdown形式)。場所やメモの内容を自然に盛り込むこと。
     - "tags": タグの配列
-    - "location": "${location}" をそのまま使用
   `;
 
   const payload = {
@@ -174,18 +202,16 @@ function processFormImage(file, location, category, memo, props) {
       ]
     }],
     generationConfig: {
-      responseMimeType: "application/json" // JSONモードを強制
+      responseMimeType: "application/json"
     }
   };
 
-  // リトライロジック (モデルを変更しながら試行)
+  // リトライロジック
   let response;
   let lastError;
-
   for (const modelName of models) {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
     console.log(`🤖 Trying model: ${modelName}`);
-
     try {
       response = UrlFetchApp.fetch(apiUrl, {
         method: 'post',
@@ -193,16 +219,10 @@ function processFormImage(file, location, category, memo, props) {
         payload: JSON.stringify(payload),
         muteHttpExceptions: true
       });
-
-      if (response.getResponseCode() === 200) break; // 成功したらループを抜ける
-
-      // エラー時はログを出して次へ
+      if (response.getResponseCode() === 200) break;
       console.warn(`⚠️ Model ${modelName} failed (${response.getResponseCode()}). Trying next...`);
       lastError = response.getContentText();
-      
-      // 連続リクエストを防ぐため少し待機
       Utilities.sleep(1000);
-
     } catch (e) {
       console.warn(`⚠️ Model ${modelName} exception: ${e.toString()}`);
       lastError = e.toString();
@@ -217,37 +237,38 @@ function processFormImage(file, location, category, memo, props) {
   const jsonText = result.candidates[0].content.parts[0].text;
   const articleData = JSON.parse(jsonText);
 
-  // ファイル名の決定 (日付 + Geminiが提案したファイル名)
+  // --- 2. ファイルとMarkdownの準備 ---
   const dateStr = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
   const baseName = `${dateStr}-${articleData.filename}`;
-  
-  // パス設定 (PaperMod向け: 画像はstatic/images, 記事はcontent/posts)
   const imagePath = `static/images/${baseName}.${fileExt}`;
   const postPath = `content/posts/${baseName}.md`;
 
-  // Google Mapsリンクの生成
-  let locationLink = "";
-  if (location && location !== '不明') {
-    const encodedLocation = encodeURIComponent(location);
-    locationLink = `\n\n📍 **撮影場所**: ${location}`;
+  // マップ表示セクションの作成
+  let locationSection = "";
+  if (sourceLocationInfo && sourceLocationInfo !== '不明') {
+    locationSection = `\n\n### 📍 撮影場所\n${sourceLocationInfo}\n\n`;
+    if (sourceMapLink) {
+      locationSection += `[Google マップで見る](${sourceMapLink})`;
+    }
   }
 
-  // 1. 画像をGitHubへアップロード (utils.jsの関数を利用)
+  // --- 3. GitHubへのアップロード ---
+  // 3-1. 画像をアップロード
   uploadToGitHub(repo, imagePath, base64Image, `Add image: ${baseName}`, githubToken);
 
-  // 2. Markdownを作成してアップロード (utils.jsの関数を利用)
+  // 3-2. Markdownを作成してアップロード
   const markdownContent = `---
 title: "${articleData.title}"
 date: ${new Date().toISOString()}
-tags: ${JSON.stringify(articleData.tags)}
-categories: ["${category}"]
-locations: ["${articleData.location}"]
+tags: ${JSON.stringify(articleData.tags || [])}
+categories: ["${category || '未分類'}"]
 cover:
   image: "/images/${baseName}.${fileExt}"
+${sourceLat ? `location:\n  lat: ${sourceLat}\n  lng: ${sourceLng}` : ''}
 ---
 
 ${articleData.content}
-${locationLink}
+${locationSection}
 `;
 
   const markdownBase64 = Utilities.base64Encode(markdownContent, Utilities.Charset.UTF_8);

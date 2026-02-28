@@ -52,32 +52,7 @@ function processImage(file, props) {
   const mimeType = file.getMimeType();
 
   // --- 0. 位置情報 (Exif) の取得と住所特定 ---
-  let locationInfo = "";
-  let mapLink = "";
-  let lat = null;
-  let lng = null;
-
-  try {
-    // Drive API (要: サービスの追加) を使用してメタデータを取得
-    const driveFile = Drive.Files.get(file.getId(), { fields: 'imageMediaMetadata' });
-    if (driveFile.imageMediaMetadata && driveFile.imageMediaMetadata.location) {
-      const loc = driveFile.imageMediaMetadata.location;
-      if (loc.latitude && loc.longitude) {
-        lat = loc.latitude;
-        lng = loc.longitude;
-        mapLink = `https://www.google.com/maps?q=${lat},${lng}`;
-        
-        // 座標から住所へ変換 (逆ジオコーディング)
-        const geoResponse = Maps.newGeocoder().setLanguage('ja').reverseGeocode(lat, lng);
-        if (geoResponse.status === 'OK' && geoResponse.results.length > 0) {
-          locationInfo = geoResponse.results[0].formatted_address;
-        }
-        Logger.log(`📍 位置情報特定: ${locationInfo} (${mapLink})`);
-      }
-    }
-  } catch (e) {
-    Logger.log(`ℹ️ 位置情報取得スキップ (Drive API未有効またはGPSなし): ${e.toString()}`);
-  }
+  const { locationInfo, mapLink, lat, lng } = getLocationData(file);
 
   // --- 1. Gemini で記事生成 & ファイル名決定 ---
   // 【修正】利用可能なモデルを動的に取得
@@ -148,7 +123,7 @@ function processImage(file, props) {
   if (locationInfo || mapLink) {
     locationSection = `\n\n### 📍 撮影場所\n`;
     if (locationInfo) locationSection += `住所: ${locationInfo}\n\n`;
-    if (mapLink) locationSection += `Google マップで見る`;
+    if (mapLink) locationSection += `[Google マップで見る](${mapLink})`;
   }
 
   // --- 4. Markdown 生成 (画像リンク付き) ---

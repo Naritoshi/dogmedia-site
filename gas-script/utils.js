@@ -122,3 +122,53 @@ function uploadToGitHub(repo, path, contentBase64, message, token) {
     throw new Error(`GitHub API Error (${path}): ${response.getContentText()}`);
   }
 }
+
+/**
+ * 画像ファイルから位置情報を抽出し、住所に変換する
+ * @param {GoogleAppsScript.Drive.File} file - 処理対象の画像ファイル
+ * @returns {{locationInfo: string, mapLink: string, lat: number|null, lng: number|null}} - 位置情報を含むオブジェクト
+ */
+function getLocationData(file) {
+  const locationData = {
+    locationInfo: "",
+    mapLink: "",
+    lat: null,
+    lng: null
+  };
+
+  try {
+    // Drive APIを有効にする必要がある
+    const driveFile = Drive.Files.get(file.getId(), { fields: 'imageMediaMetadata' });
+
+    if (!driveFile.imageMediaMetadata || !driveFile.imageMediaMetadata.location) {
+      Logger.log('ℹ️ 画像に位置情報メタデータが含まれていません。');
+      return locationData;
+    }
+
+    const loc = driveFile.imageMediaMetadata.location;
+    if (!loc.latitude || !loc.longitude) {
+      Logger.log('ℹ️ 位置情報メタデータに有効な緯度・経度が含まれていません。');
+      return locationData;
+    }
+
+    locationData.lat = loc.latitude;
+    locationData.lng = loc.longitude;
+    locationData.mapLink = `https://www.google.com/maps?q=${locationData.lat},${locationData.lng}`;
+
+    // 逆ジオコーディングで座標を住所に変換
+    const geoResponse = Maps.newGeocoder().setLanguage('ja').reverseGeocode(locationData.lat, locationData.lng);
+    
+    if (geoResponse.status === 'OK' && geoResponse.results.length > 0) {
+      locationData.locationInfo = geoResponse.results[0].formatted_address;
+      Logger.log(`📍 位置情報特定成功: ${locationData.locationInfo} (${locationData.mapLink})`);
+    } else {
+      // 住所が取得できなくても、緯度経度は記録されているのでマップリンクは有効
+      Logger.log(`⚠️ 逆ジオコーディングに失敗しました。ステータス: ${geoResponse.status}`);
+    }
+    
+  } catch (e) {
+    Logger.log(`⚠️ 位置情報取得中にエラーが発生しました。Drive APIが無効か、その他の問題の可能性があります。エラー: ${e.toString()}`);
+  }
+
+  return locationData;
+}
