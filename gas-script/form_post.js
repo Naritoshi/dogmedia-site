@@ -70,6 +70,18 @@ function onSpreadsheetEdit(e) {
  * @param {Object} e - イベントオブジェクト
  */
 function onFormSubmit(e) {
+  // --- ここからデバッグコード ---
+  // イベントオブジェクトの内容をログに出力して、どのようなトリガーで実行されたかを確認します。
+  try {
+    Logger.log('【デバッグ情報】イベントオブジェクトの内容:');
+    Logger.log(JSON.stringify(e, null, 2));
+  } catch (err) {
+    Logger.log('【デバッグ情報】イベントオブジェクトの確認中にエラー: ' + err.toString());
+    // eがnullやundefinedの場合も考慮
+    Logger.log('e object: ' + e);
+  }
+  // --- ここまでデバッグコード ---
+
   const props = PropertiesService.getScriptProperties();
   
   // 1. セキュリティチェック (自分自身の投稿か確認)
