@@ -204,7 +204,7 @@ function processFormImage(file, location, category, memo, props) {
     - JSON形式のみ出力すること（Markdownコードブロックは不要）
     - "filename": 画像の内容を表す英単語(ケバブケース, 拡張子なし)
     - "title": 魅力的なタイトル(30文字以内)
-    - "content": 記事本文(Markdown形式)。場所やメモの内容を自然に盛り込むこと。
+    - "content": 記事本文(Markdown形式)。場所やメモの内容を自然に盛り込むこと。少なくとも1000文字以上で記述してください。
     - "tags": タグの配列
   `;
 
