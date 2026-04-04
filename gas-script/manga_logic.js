@@ -213,3 +213,19 @@ ${framesHtml}
 
   return mangaData.title;
 }
+
+/**
+ * 画像生成単体のテスト実行用関数
+ */
+function debugGenerateImage() {
+  const props = PropertiesService.getScriptProperties();
+  const apiKey = props.getProperty('GEMINI_API_KEY');
+  
+  try {
+    Logger.log("🎨 テスト画像生成中...");
+    const blob = generateImage("A cute golden doodle dog playing with a ball in a park, comic book style", apiKey);
+    Logger.log("✅ 生成成功！ファイルサイズ: " + blob.getBytes().length + " bytes");
+  } catch (e) {
+    Logger.log("❌ 生成失敗: " + e.toString());
+  }
+}
