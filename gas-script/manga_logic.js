@@ -91,9 +91,9 @@ function generateMangaStructure(imageBlob, apiKey) {
  * @return {GoogleAppsScript.Base.Blob} - 生成された画像のBlob
  */
 function generateImage(prompt, apiKey) {
-  // 【修正】Imagen モデルも動的に取得
+  // 【修正】Imagen モデルも動的に取得（models/ プレフィックス込み）
   const modelName = getValidImagenModel(apiKey); 
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${apiKey}`;
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/${modelName}:predict?key=${apiKey}`;
 
   const payload = {
     instances: [

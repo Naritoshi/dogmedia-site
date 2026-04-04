@@ -272,8 +272,9 @@ function normalizeTags(tags) {
       if (imagenModels.length > 0) {
         // バージョン番号（例: 4.0）や 'fast' を考慮してソート
         imagenModels.sort((a, b) => {
-          const getScore = (name) => {
+          const getScore = (model) => {
             let score = 0;
+            const name = model.name || "";
             if (name.includes('4.0')) score += 100;
             if (name.includes('3.0')) score += 50;
             if (name.includes('fast')) score += 10;
@@ -282,11 +283,14 @@ function normalizeTags(tags) {
           return getScore(b) - getScore(a);
         });
 
-        const modelName = imagenModels[0].name.split('/').pop();
-        Logger.log(`🎨 動的に Imagen モデルを選択しました: ${modelName}`);
-        return modelName;
-      }
-    }
+        // 【修正】models/ プレフィックスを含めたフルパスで返す
+        const modelName = imagenModels[0].name; 
+ 
+          Logger.log(`🎨 動的に Imagen モデルを選択しました: ${modelName}`);
+          return modelName;
+          }
+          }
+
     } catch (e) {
     Logger.log(`Imagen モデル一覧取得エラー: ${e.toString()}`);
     }
