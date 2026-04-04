@@ -85,6 +85,45 @@ function generateMangaStructure(imageBlob, apiKey) {
 }
 
 /**
+ * Imagen 3 API を使用して画像を生成する
+ * @param {string} prompt - 画像生成用の英語プロンプト
+ * @param {string} apiKey - Gemini APIキー
+ * @return {GoogleAppsScript.Base.Blob} - 生成された画像のBlob
+ */
+function generateImage(prompt, apiKey) {
+  // 注: Google AI Studio で Imagen 3 が有効になっている必要があります
+  const modelName = 'imagen-3.0-generate-001'; 
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${apiKey}`;
+
+  const payload = {
+    instances: [
+      { prompt: prompt }
+    ],
+    parameters: {
+      sampleCount: 1,
+      aspectRatio: "1:1" // 4コマ漫画なので正方形
+    }
+  };
+
+  const response = UrlFetchApp.fetch(apiUrl, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+
+  if (response.getResponseCode() !== 200) {
+    throw new Error(`Imagen 3 Error: ${response.getContentText()}`);
+  }
+
+  const result = JSON.parse(response.getContentText());
+  const base64Image = result.predictions[0].bytesBase64Encoded;
+  const imageBlob = Utilities.newBlob(Utilities.base64Decode(base64Image), 'image/png', 'manga-frame.png');
+  
+  return imageBlob;
+}
+
+/**
  * 4コマ漫画記事を処理してGitHubへアップロードする
  */
 function processMangaPost(file, memo, props) {
@@ -92,34 +131,64 @@ function processMangaPost(file, memo, props) {
   const githubToken = props.getProperty('GITHUB_TOKEN');
   const repo = props.getProperty('GITHUB_REPO');
 
-  const blob = file.getBlob();
-  const base64Image = Utilities.base64Encode(blob.getBytes());
+  const originalBlob = file.getBlob();
   const fileExt = file.getName().split('.').pop();
 
   // 1. 4コマの構成を生成
-  const mangaData = generateMangaStructure(blob, apiKey);
+  const mangaData = generateMangaStructure(originalBlob, apiKey);
 
   // 2. ファイル名の準備
   const dateStr = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
   const timestamp = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'HHmmss');
   const baseName = `${dateStr}-${timestamp}-manga`;
-  const imagePath = `static/images/${baseName}-1.${fileExt}`;
   const postPath = `content/posts/${baseName}.md`;
 
-  // 3. 1コマ目の画像をアップロード
-  uploadToGitHub(repo, imagePath, base64Image, `Add manga frame 1: ${baseName}`, githubToken);
+  // 3. 各コマの画像を生成・アップロード
+  const frameImageUrls = [];
+  
+  for (let i = 0; i < mangaData.frames.length; i++) {
+    const frame = mangaData.frames[i];
+    const frameIndex = i + 1;
+    let frameBlob;
+    let currentExt = fileExt;
+
+    if (frame.is_original) {
+      // 1コマ目：元の写真を使用
+      frameBlob = originalBlob;
+    } else {
+      // 2-4コマ目：AIで画像生成
+      Logger.log(`🎨 Generating AI image for frame ${frameIndex}...`);
+      try {
+        frameBlob = generateImage(frame.image_gen_prompt, apiKey);
+        currentExt = 'png'; // AI生成はPNG
+      } catch (e) {
+        Logger.log(`⚠️ Frame ${frameIndex} generation failed: ${e.toString()}`);
+        frameBlob = null; // 失敗時は画像なし（ト書きのみ）
+      }
+    }
+
+    if (frameBlob) {
+      const imagePath = `static/images/${baseName}-${frameIndex}.${currentExt}`;
+      const base64Content = Utilities.base64Encode(frameBlob.getBytes());
+      uploadToGitHub(repo, imagePath, base64Content, `Add manga frame ${frameIndex}: ${baseName}`, githubToken);
+      frameImageUrls.push(`/images/${baseName}-${frameIndex}.${currentExt}`);
+    } else {
+      frameImageUrls.push(null);
+    }
+  }
 
   // 4. Markdown の作成
-  // Hugo のショートコードやカスタムHTMLで4コマを表現することを想定
-  const framesHtml = mangaData.frames.map((frame, index) => `
+  const framesHtml = mangaData.frames.map((frame, index) => {
+    const imageUrl = frameImageUrls[index];
+    return `
 <div class="manga-frame">
   <div class="frame-number">${index + 1}</div>
   <div class="frame-image">
-    ${frame.is_original ? `<img src="/images/${baseName}-1.${fileExt}" alt="Original Photo">` : `<div class="ai-scene-placeholder">🖼️ AI生成イメージ案: ${frame.scene_description}</div>`}
+    ${imageUrl ? `<img src="${imageUrl}" alt="Frame ${index + 1}">` : `<div class="ai-scene-placeholder">🖼️ AI生成失敗: ${frame.scene_description}</div>`}
   </div>
   <div class="frame-dialogue">${frame.dialogue}</div>
 </div>
-`).join('');
+`}).join('');
 
   const markdownContent = `---
 title: "【4コマ】${mangaData.title}"
@@ -128,7 +197,7 @@ tags: ["4コマ漫画", "AI生成", "ゴールデンドゥードル"]
 categories: ["エンタメ"]
 isManga: true
 cover:
-  image: "/images/${baseName}-1.${fileExt}"
+  image: "${frameImageUrls[0] || ''}"
 ---
 
 <div class="manga-container">

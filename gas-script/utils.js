@@ -124,6 +124,30 @@ function uploadToGitHub(repo, path, contentBase64, message, token) {
 }
 
 /**
+ * GitHub からファイルを取得する
+ * @param {string} repo - リポジトリ名
+ * @param {string} path - ファイルパス
+ * @param {string} token - GitHubトークン
+ * @return {Object} - ファイル内容とSHA
+ */
+function getFileFromGitHub(repo, path, token) {
+  const url = `https://api.github.com/repos/${repo}/contents/${path}`;
+  const response = UrlFetchApp.fetch(url, {
+    method: 'get',
+    headers: { 'Authorization': `Bearer ${token}` },
+    muteHttpExceptions: true
+  });
+
+  if (response.getResponseCode() !== 200) {
+    throw new Error(`GitHub API Get Error (${path}): ${response.getContentText()}`);
+  }
+
+  const data = JSON.parse(response.getContentText());
+  // テキストファイルの場合はデコード、バイナリの場合はそのまま返す処理が必要
+  return data;
+}
+
+/**
  * 画像ファイルから位置情報を抽出し、住所に変換する
  * @param {GoogleAppsScript.Drive.File} file - 処理対象の画像ファイル
  * @returns {{locationInfo: string, mapLink: string, lat: number|null, lng: number|null}} - 位置情報を含むオブジェクト
