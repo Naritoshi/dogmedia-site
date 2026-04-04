@@ -54,3 +54,30 @@ function onMangaFormSubmit(e) {
     } catch (sheetErr) {}
   }
 }
+
+/**
+ * 4コマ漫画用のトリガーをプログラムから設定する関数
+ * これを実行することで、新しいスプレッドシートの送信をこのスクリプトが検知できるようになります。
+ */
+function setupMangaTrigger() {
+  // 【重要】ここに「4コマ漫画用スプレッドシート」のIDを入力してください
+  const sheetId = 'ここに4コマ漫画用スプレッドシートのIDを貼り付けてください';
+  
+  if (sheetId.includes('ここに')) {
+    throw new Error('❌ スプレッドシートIDを入力してから実行してください');
+  }
+
+  // 既存の同名トリガーがあれば削除（重複防止）
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(t => {
+    if (t.getHandlerFunction() === 'onMangaFormSubmit') ScriptApp.deleteTrigger(t);
+  });
+
+  // 新しいトリガーを作成
+  ScriptApp.newTrigger('onMangaFormSubmit')
+    .forSpreadsheet(sheetId)
+    .onFormSubmit()
+    .create();
+
+  Logger.log(`✅ 4コマ漫画用のトリガーを設定しました: ${sheetId}`);
+}

@@ -5,7 +5,8 @@
  * @return {Object} - 4コマの構成データ
  */
 function generateMangaStructure(imageBlob, apiKey) {
-  const modelName = 'gemini-1.5-flash'; // 4コマの構成なら Flash で十分高速かつ安価
+  // 【修正】既存の utils.js にある関数を使って、有効な最新の Flash モデルを取得
+  const modelName = getValidFlashModel(apiKey);
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
   const base64Image = Utilities.base64Encode(imageBlob.getBytes());
