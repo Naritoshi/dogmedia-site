@@ -1,7 +1,7 @@
 ---
 title: "にこにこキャンプ場で迎える最高の日の出"
 date: 2026-02-28T03:25:19.895Z
-tags: ["キャンプ","旅行","日の出","犬連れキャンプ","にこにこキャンプ場"]
+tags: ["キャンプ","旅行","日の出","犬連れ","にこにこキャンプ場"]
 categories: ["旅行"]
 cover:
   image: "/images/2026-02-28-dog-sunrise-nikoniko-camping.jpeg"

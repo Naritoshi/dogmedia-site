@@ -3,7 +3,7 @@ title: "ジャージーミルク館前のユニークな光景"
 date: 2026-02-14T20:11:32.694Z
 cover:
   image: "images/20260215051126382-milk-can-dog-jersey-cow-display.jpg"
-tags: ["犬", "ジャージー牛", "ミルク缶", "屋外展示", "テーマパーク"]
+tags: ["犬","ジャージー牛","ミルク缶","屋外展示","テーマパーク"]
 aiGenerated: true
 
 ---

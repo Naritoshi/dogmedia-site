@@ -1,7 +1,7 @@
 ---
 title: "TONÉS COFFEE ROASTERSで愛犬と過ごす至福の休憩"
 date: 2026-03-11T06:50:20.600Z
-tags: ["TONÉS COFFEE ROASTERS","コーヒー","カフェ巡り","ドッグフレンドリー","自家焙煎","カメラ散歩"]
+tags: ["TONÉS COFFEE ROASTERS","コーヒー","カフェ","犬連れ","自家焙煎","カメラ散歩"]
 categories: ["お店"]
 cover:
   image: "/images/2026-03-11-tones-coffee-roasters-dog-friendly-cafe.jpeg"

@@ -196,16 +196,19 @@ function processFormImage(file, location, category, memo, props) {
     あなたはプロのブロガーです。以下の情報を元に、ブログ記事のJSONデータを作成してください。
     
     【入力情報】
-    - 撮影場所: ${sourceLocationInfo}
-    - カテゴリー: ${category || '日常'}
-    - メモ: ${memo || '特になし'}
+    - 撮影場所: \${sourceLocationInfo}
+    - カテゴリー: \${category || '日常'}
+    - メモ: \${memo || '特になし'}
     
     【要件】
     - JSON形式のみ出力すること（Markdownコードブロックは不要）
     - "filename": 画像の内容を表す英単語(ケバブケース, 拡張子なし)
     - "title": 魅力的なタイトル(30文字以内)
     - "content": 記事本文(Markdown形式)。場所やメモの内容を自然に盛り込むこと。600〜800文字で記事を書いてください。長すぎない自然なブログ記事にしてください。
-    - "tags": タグの配列
+    - "tags": タグの配列。以下の【推奨タグ】を優先的に使用し、必要に応じて具体的なタグを追加してください。
+    
+    【推奨タグ】
+    ゴールデンドゥードル, ふわもこ, 犬連れ, カフェ, ドッグラン, 公園, キャンプ, 旅行, 散歩, お出かけ, 笑顔, 日常, 休日, 花, 春, 夏, 秋, 冬, 朝, 昼, 夕暮れ, 夜, 屋外, 屋内, ペット服
   `;
 
   const payload = {
@@ -250,6 +253,9 @@ function processFormImage(file, location, category, memo, props) {
   const result = JSON.parse(response.getContentText());
   const jsonText = result.candidates[0].content.parts[0].text;
   const articleData = JSON.parse(jsonText);
+
+  // タグの正規化（表記ゆれの統一）
+  articleData.tags = normalizeTags(articleData.tags);
 
   // --- 2. ファイルとMarkdownの準備 ---
   const dateStr = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');

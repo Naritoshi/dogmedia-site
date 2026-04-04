@@ -172,3 +172,49 @@ function getLocationData(file) {
 
   return locationData;
 }
+
+/**
+ * タグを正規化して統一感を出す
+ * @param {string[]} tags - 正規化前のタグ配列
+ * @return {string[]} - 正規化後のタグ配列（重複排除済み）
+ */
+function normalizeTags(tags) {
+  if (!tags || !Array.isArray(tags)) return [];
+  
+  const mapping = {
+    'ゴールドンドゥードル': 'ゴールデンドゥードル',
+    'ドゥードル': 'ゴールデンドゥードル',
+    'お散歩': '散歩',
+    '犬とお出かけ': '犬連れ',
+    '犬のいる暮らし': '犬',
+    'もこもこ': 'ふわもこ',
+    'カフェ巡り': 'カフェ',
+    'ドッグフレンドリー': '犬連れ',
+    '犬連れキャンプ': ['キャンプ', '犬連れ'],
+    '屋外テラス': '屋外',
+    '屋内テラス': '屋内',
+    '春の風景': '春',
+    '青い服': 'ペット服',
+    'トラックスーツ': 'ペット服',
+  };
+
+  const normalized = [];
+  tags.forEach(tag => {
+    const trimmed = tag.trim();
+    if (!trimmed) return;
+
+    if (mapping[trimmed]) {
+      const replacement = mapping[trimmed];
+      if (Array.isArray(replacement)) {
+        normalized.push(...replacement);
+      } else {
+        normalized.push(replacement);
+      }
+    } else {
+      normalized.push(trimmed);
+    }
+  });
+
+  // 重複排除
+  return [...new Set(normalized)];
+}

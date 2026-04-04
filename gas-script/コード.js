@@ -77,6 +77,9 @@ function processImage(file, props) {
       "tags": ["タグ1", "タグ2"],
       "content": "Markdown形式の本文。客観的な観察レポートとして記述。"
     }
+
+    【推奨タグ】
+    ゴールデンドゥードル, ふわもこ, 犬連れ, カフェ, ドッグラン, 公園, キャンプ, 旅行, 散歩, お出かけ, 笑顔, 日常, 休日, 花, 春, 夏, 秋, 冬, 朝, 昼, 夕暮れ, 夜, 屋外, 屋内, ペット服
   `;
 
   const payload = {
@@ -102,6 +105,9 @@ function processImage(file, props) {
   let rawText = JSON.parse(response.getContentText()).candidates[0].content.parts[0].text;
   rawText = rawText.replace(/```json|```/g, '').trim();
   const data = JSON.parse(rawText);
+
+  // タグの正規化
+  data.tags = normalizeTags(data.tags);
 
   // --- 2. ファイル名生成 (タイムスタンプ + AIファイル名) ---
   const now = new Date();

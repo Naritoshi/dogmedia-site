@@ -3,7 +3,7 @@ title: "青い服を着た長毛犬の姿"
 date: 2026-02-14T14:12:32.633Z
 cover:
   image: "images/20260214231223995-fluffy-dog-blue-sweater.jpg"
-tags: ["犬", "長毛犬", "青い服", "屋外", "散歩"]
+tags: ["犬","長毛犬","ペット服","屋外","散歩"]
 aiGenerated: true
 
 ---

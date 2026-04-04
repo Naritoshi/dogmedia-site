@@ -3,7 +3,7 @@ title: "古い機械と犬の風景"
 date: 2026-02-14T20:10:52.943Z
 cover:
   image: "images/20260215051051721-goldendoodle-rusty-machinery-park.jpg"
-tags: ["犬", "ゴールデンドゥードル", "公園", "古い機械", "水路", "散歩"]
+tags: ["犬","ゴールデンドゥードル","公園","古い機械","水路","散歩"]
 aiGenerated: true
 
 ---
