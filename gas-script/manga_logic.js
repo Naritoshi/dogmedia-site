@@ -162,8 +162,10 @@ function processMangaPost(file, memo, props) {
         frameBlob = generateImage(frame.image_gen_prompt, apiKey);
         currentExt = 'png'; // AI生成はPNG
       } catch (e) {
-        Logger.log(`⚠️ Frame ${frameIndex} generation failed: ${e.toString()}`);
-        frameBlob = null; // 失敗時は画像なし（ト書きのみ）
+        // 【修正】画像生成に失敗した場合は、そこでエラーを投げて中断する
+        const errorMsg = `❌ Frame ${frameIndex} generation failed: ${e.toString()}`;
+        Logger.log(errorMsg);
+        throw new Error(errorMsg); 
       }
     }
 
@@ -172,11 +174,10 @@ function processMangaPost(file, memo, props) {
       const base64Content = Utilities.base64Encode(frameBlob.getBytes());
       uploadToGitHub(repo, imagePath, base64Content, `Add manga frame ${frameIndex}: ${baseName}`, githubToken);
       frameImageUrls.push(`/images/${baseName}-${frameIndex}.${currentExt}`);
-    } else {
-      frameImageUrls.push(null);
     }
   }
 
+  // ここまで来れば全画像が揃っている
   // 4. Markdown の作成
   const framesHtml = mangaData.frames.map((frame, index) => {
     const imageUrl = frameImageUrls[index];
