@@ -245,8 +245,50 @@ function normalizeTags(tags) {
     } else {
       normalized.push(trimmed);
     }
-  });
+    });
 
-  // 重複排除
-  return [...new Set(normalized)];
-}
+    // 重複排除
+    return [...new Set(normalized)];
+    }
+
+    /**
+    * 利用可能な最新の Imagen モデル名を取得する
+    * @param {string} apiKey - Gemini APIキー
+    * @return {string} - モデル名
+    */
+    function getValidImagenModel(apiKey) {
+    const modelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+    try {
+    const response = UrlFetchApp.fetch(modelsUrl, { method: 'get', muteHttpExceptions: true });
+    if (response.getResponseCode() === 200) {
+      const models = JSON.parse(response.getContentText()).models;
+      // 'predict'をサポートし、名前に'imagen'を含むモデルを探す
+      // 4.0 -> 3.0 の順、かつ 'fast' を優先するなどのソートを行う
+      const imagenModels = models.filter(m => 
+        m.name.includes('imagen') && 
+        m.supportedGenerationMethods.includes('predict')
+      );
+
+      if (imagenModels.length > 0) {
+        // バージョン番号（例: 4.0）や 'fast' を考慮してソート
+        imagenModels.sort((a, b) => {
+          const getScore = (name) => {
+            let score = 0;
+            if (name.includes('4.0')) score += 100;
+            if (name.includes('3.0')) score += 50;
+            if (name.includes('fast')) score += 10;
+            return score;
+          };
+          return getScore(b) - getScore(a);
+        });
+
+        const modelName = imagenModels[0].name.split('/').pop();
+        Logger.log(`🎨 動的に Imagen モデルを選択しました: ${modelName}`);
+        return modelName;
+      }
+    }
+    } catch (e) {
+    Logger.log(`Imagen モデル一覧取得エラー: ${e.toString()}`);
+    }
+    return 'imagen-3.0-generate-001'; // フォールバック
+    }

@@ -91,8 +91,8 @@ function generateMangaStructure(imageBlob, apiKey) {
  * @return {GoogleAppsScript.Base.Blob} - 生成された画像のBlob
  */
 function generateImage(prompt, apiKey) {
-  // 注: Google AI Studio で Imagen 3 が有効になっている必要があります
-  const modelName = 'imagen-3.0-generate-001'; 
+  // 【修正】Imagen モデルも動的に取得
+  const modelName = getValidImagenModel(apiKey); 
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${apiKey}`;
 
   const payload = {
@@ -228,4 +228,25 @@ function debugGenerateImage() {
   } catch (e) {
     Logger.log("❌ 生成失敗: " + e.toString());
   }
+}
+
+/**
+ * 利用可能なモデル一覧を表示して、正しいImagenのモデル名を探す
+ */
+function listAvailableModels() {
+  const props = PropertiesService.getScriptProperties();
+  const apiKey = props.getProperty('GEMINI_API_KEY');
+  const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+
+  const response = UrlFetchApp.fetch(url, { method: 'get', muteHttpExceptions: true });
+  const models = JSON.parse(response.getContentText()).models;
+  
+  Logger.log("--- 利用可能なモデル一覧 ---");
+  models.forEach(m => {
+    if (m.name.includes('imagen')) {
+      Logger.log("🎯 見つかりました: " + m.name);
+    } else {
+      Logger.log("  " + m.name);
+    }
+  });
 }
