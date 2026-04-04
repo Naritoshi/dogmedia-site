@@ -231,7 +231,7 @@ function debugGenerateImage() {
 }
 
 /**
- * 利用可能なモデル一覧を表示して、正しいImagenのモデル名を探す
+ * 利用可能なモデル一覧を表示して、正しいImagenのモデル名を探す（詳細版）
  */
 function listAvailableModels() {
   const props = PropertiesService.getScriptProperties();
@@ -241,12 +241,11 @@ function listAvailableModels() {
   const response = UrlFetchApp.fetch(url, { method: 'get', muteHttpExceptions: true });
   const models = JSON.parse(response.getContentText()).models;
   
-  Logger.log("--- 利用可能なモデル一覧 ---");
+  Logger.log("--- 利用可能なモデル詳細 ---");
   models.forEach(m => {
     if (m.name.includes('imagen')) {
-      Logger.log("🎯 見つかりました: " + m.name);
-    } else {
-      Logger.log("  " + m.name);
+      Logger.log(`🎯 見つかりました: ${m.name}`);
+      Logger.log(`   メソッド: ${m.supportedGenerationMethods.join(', ')}`);
     }
   });
 }
