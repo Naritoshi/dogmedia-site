@@ -1,7 +1,7 @@
 ---
 title: "トリミングでスッキリ！お花に囲まれた癒やしのワンちゃん"
 date: 2026-03-11T00:53:31.658Z
-tags: ["犬","トリミング","ペット","ゴールデンドゥードル","癒やし","ふわもこ"]
+tags: ["犬","トリミング","ゴールデンドゥードル","癒やし","ふわもこ"]
 categories: ["その他"]
 cover:
   image: "/images/2026-03-11-fluffy-dog-trimming-colorful-flowers.jpeg"

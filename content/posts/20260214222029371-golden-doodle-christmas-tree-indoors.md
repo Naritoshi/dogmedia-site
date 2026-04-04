@@ -3,7 +3,7 @@ title: "クリスマスツリーとゴールデン・ドゥードル"
 date: 2026-02-14T13:20:30.888Z
 cover:
   image: "images/20260214222029371-golden-doodle-christmas-tree-indoors.jpg"
-tags: ["ゴールデン・ドゥードル","犬","クリスマス","クリスマスツリー","屋内","ペット","大阪"]
+tags: ["ゴールデンドゥードル","犬","クリスマス","クリスマスツリー","屋内","大阪"]
 aiGenerated: true
 
 ---

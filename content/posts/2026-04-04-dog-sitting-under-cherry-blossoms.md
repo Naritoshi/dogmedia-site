@@ -1,7 +1,7 @@
 ---
 title: "桜と愛犬の思い出：散る前に撮れた奇跡の一枚"
 date: 2026-04-04T04:23:27.798Z
-tags: ["桜","愛犬","お散歩","春の風景","犬のいる暮らし","お花見"]
+tags: ["桜","犬","散歩","春","お花見"]
 categories: ["その他"]
 cover:
   image: "/images/2026-04-04-dog-sitting-under-cherry-blossoms.jpeg"

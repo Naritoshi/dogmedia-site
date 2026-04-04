@@ -3,7 +3,7 @@ title: "人工芝の屋外でくつろぐ犬"
 date: 2026-02-14T12:50:33.531Z
 cover:
   image: "images/20260214215031174-fluffy-dog-in-tracksuit-on-artificial-grass.png"
-tags: ["犬","ドッグラン","人工芝","ペット服","屋外","笑顔","ヤシの木","フェンス","ペット"]
+tags: ["犬","ドッグラン","人工芝","ペット服","屋外","笑顔","ヤシの木","フェンス"]
 aiGenerated: true
 ---
 
